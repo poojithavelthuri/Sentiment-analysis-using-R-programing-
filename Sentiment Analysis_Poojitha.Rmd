@@ -1,0 +1,212 @@
+---
+title: "BIS581_Sentiment Analysis_Poojitha"
+output:
+  word_document: default
+  html_notebook: default
+---
+
+Loading Libraries
+```{r}
+#load libraries
+##Student first name: Poojitha
+library(tidytext)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggraph)
+library(igraph)
+```
+
+Load our data
+```{r}
+#get data
+##Student last name: Velthuri
+tweetdata <- readRDS("got2.rds")
+
+```
+
+
+Q1. how many English tweets are there? (5)
+
+```{r}
+##Student full name: Poojitha Velthuri
+
+english_tweets <- tweetdata %>%
+  filter(lang == "en")
+
+num_english_tweets <- nrow(english_tweets)
+print(paste("Number of English tweets:", num_english_tweets))
+```
+Q2. what is the ratio of retweets to total tweets?
+
+```{r}
+##Student first name: Poojitha
+library(dplyr)
+
+tweetdata <- tweetdata %>%
+  mutate(is_retweet = grepl("^RT", msg))
+
+tweet_counts <- tweetdata %>%
+  summarize(
+    total_tweets = n(),
+    retweets = sum(is_retweet)
+  )
+
+tweet_counts <- tweet_counts %>%
+  mutate(retweets_to_totaltweets = retweets / total_tweets)
+
+
+#print(tweet_counts)
+
+cat(sprintf(
+  "The number of retweets in the dataset is %d, which is %.2f%% of the total tweets.\n",
+  tweet_counts$retweets,
+  tweet_counts$retweets_to_totaltweets * 100
+))
+
+```
+
+
+Q3. what is the most popular “source” used to post? 
+```{r}
+##Student last name: Velthuri
+source_cleaned <- tweetdata %>%
+  mutate(source_clean = gsub(".*<a href=[^>]+>([^<]+)</a>.*", "\\1", source))
+
+source_counts <- source_cleaned %>%
+  count(source_clean, sort = TRUE) %>%
+  slice_head(n = 5)
+
+print(source_counts)
+
+```
+```{r}
+
+most_popular_source <- source_counts %>%
+  slice_max(n, n = 1) %>%
+  pull(source_clean)
+
+max_count <- source_counts %>%
+  slice_max(n, n = 1) %>%
+  pull(n)
+
+cat("The most popular source used is ", most_popular_source, "with a count of", max_count, "\n")
+```
+
+Q4. Create a bar graph of most frequent Positive and Negative words (use BING) 
+```{r}
+##Student full name: Poojitha Velthuri
+library(tidytext)
+library(ggplot2)
+library(dplyr)
+
+tweetdata_rows <- tweetdata %>% mutate(h_number = row_number())
+tweetdata_Tidy <- tweetdata_rows %>% unnest_tokens(word, msg)
+
+
+tweetdata_Tidy <- tweetdata_Tidy %>% anti_join(stop_words)
+
+
+sentiments <- get_sentiments("bing")
+tweetdata_sentiments <- tweetdata_Tidy %>%
+  inner_join(sentiments) %>%
+  count(word, sentiment, sort = TRUE)
+
+
+tweetdata_positive <- tweetdata_sentiments %>% filter(sentiment == "positive")
+tweetdata_negative <- tweetdata_sentiments %>% filter(sentiment == "negative")
+
+
+ggplot(tweetdata_positive %>% top_n(15) %>% mutate(word = reorder(word, n)), 
+       aes(x = word, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Word", y = "Word Count", title = "Most Frequent Positive Words")
+
+ggplot(tweetdata_negative %>% top_n(15) %>% mutate(word = reorder(word, n)), 
+       aes(x = word, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(x = "Word", y = "Word Count", title = "Most Frequent Negative Words")
+```
+Q5. create a wordcloud of most frequent positive and negative words
+
+```{r}
+##Student last name: Velthuri
+
+library(wordcloud)
+library(RColorBrewer) 
+
+tweetdata_rows <- tweetdata %>% mutate(h_number = row_number())
+tweetdata_Tidy <- tweetdata_rows %>% unnest_tokens(word, msg)
+
+
+tweetdata_Tidy <- tweetdata_Tidy %>% anti_join(stop_words)
+
+
+sentiments <- get_sentiments("bing")
+tweetdata_sentiments <- tweetdata_Tidy %>%
+  inner_join(sentiments) %>%
+  count(word, sentiment, sort = TRUE)
+
+
+tweetdata_positive <- tweetdata_sentiments %>% filter(sentiment == "positive")
+tweetdata_negative <- tweetdata_sentiments %>% filter(sentiment == "negative")
+
+
+wordcloud(
+  words = tweetdata_positive$word,
+  freq = tweetdata_positive$n,
+  min.freq = 3, # Adjust as needed
+  scale = c(4, 0.5),
+  random.order = FALSE,
+  colors = brewer.pal(8, "Blues"), 
+  rot.per = 0.35, 
+  main = "Word Cloud of Most Frequent Positive Words"
+)
+
+
+wordcloud(
+  words = tweetdata_negative$word,
+  freq = tweetdata_negative$n,
+  min.freq = 3,
+  scale = c(4, 0.5),
+  random.order = FALSE,
+  colors = brewer.pal(8, "Reds"), 
+  rot.per = 0.35, 
+  main = "Word Cloud of Most Frequent Negative Words"
+)
+```
+Q6. create a network diagram (adjust the filter so that individual words are legible. ie: don't have a tangled mess of a plot)
+
+```{r}
+##Student full name: Poojitha Velthuri
+# Load necessary libraries
+library(tidytext)
+library(dplyr)
+library(igraph)   
+library(ggraph)   
+library(tidyr)    
+library(ggplot2)
+```
+```{r code3, echo=FALSE, message=FALSE, warning=FALSE}
+tweetdataBigram <- tweetdata %>% unnest_tokens(bigram, msg, token = "ngrams", n = 2)
+tweetdataBigram %>% count(bigram,sort=TRUE) %>% top_n(5)
+
+tweetdataBigramCount <- tweetdataBigram %>% separate(bigram, c("word1", "word2"), sep = " ") %>%
+        filter(!word1 %in% stop_words$word,
+               !word2 %in% stop_words$word) %>%
+        count(word1, word2, sort = TRUE)
+
+tweetdataBigramCount %>%  filter(n>=600) %>%
+  graph_from_data_frame() %>% ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n)) +
+  geom_node_point(color = "darkslategray4", size = 3) +
+  geom_node_text(aes(label = name), vjust = 1.8, size = 3) +
+  labs(title = "Network diagram for tweetdata",
+       x = "", y = "") +
+  theme_void()
+
+```
+
+
