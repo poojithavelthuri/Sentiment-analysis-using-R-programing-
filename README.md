@@ -1,1 +1,2 @@
-# Sentiment-analysis-using-R-programing-
+# Sentiment-analysis-using-R-programing
+Sentiment analysis in R involves extracting and classifying emotions or opinions from text data (e.g., positive, negative, neutral). It typically includes text preprocessing (cleaning and tokenizing), applying sentiment lexicons like Bing, AFINN, or NRC using packages such as tidytext, and visualizing results with ggplot2. R's powerful text mining tools make it ideal for analyzing reviews, tweets, and survey responses efficiently
